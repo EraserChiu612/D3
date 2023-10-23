@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.js"
+			integrity="sha512-NmSTfudjn1FCaFMQ+f4xveBmwRJn5ep8Wu+YOeq+CeExhFtKvwhfKVXFX3tGxoGWxu8Fl83qm9nE8/Hkc1dWZg=="
+			crossorigin="anonymous"
+		></script>
+		<title>Document</title>
+	</head>
+	<body>
+		<div id="app">
+			<div class="chart"></div>
+		</div>
+
+		<script>
+			// 建立svg
+			const svgWidth = parseInt(d3.select('.chart').style('width'))
+			const svgHeight = 500
+			const margin = 40
+
+			const svg = d3
+				.select('.chart')
+				.append('svg')
+				.attr('width', svgWidth)
+				.attr('height', svgHeight)
+			//建立初始x軸
+			const xScale = d3
+				.scaleBand()
+				.range([margin * 2, svgWidth - margin / 2])
+				.padding(0.2)
+
+			const xAxisGenerator = d3.axisBottom(xScale)
+			const XAxis = svg
+				.append('g')
+				.attr('transform', `translate(0, ${svgHeight - margin})`)
+			//建立初始y軸
+			const yScale = d3.scaleLinear().range([svgHeight - margin, margin])
+			//設定y軸的ticks(刻度)數量
+			const yAxisGenerator = d3.axisLeft(yScale).ticks(10).tickSize(3)
+
+			const yAxis = svg
+				.append('g')
+				.attr('transform', `translate(${margin * 2}, 0)`)
+
+			//使用d3.csv方法取資料,map整理資料集,取得csv資料
+			const getCsvData = async () => {
+				const data = await d3.csv('./各縣市民進黨票數.csv')
+				xData = data.map(i => i['縣市'])
+				yData = data.map(i => parseInt(i['得票數'].split(',').join('')))
+
+				//設定x軸的domain
+				xScale.domain(xData)
+				XAxis.transition().duration(1000).call(xAxisGenerator)
+				//設定x軸的文字樣式
+				XAxis.selectAll('text')
+					.attr('transform', 'translate(-10,0)rotate(-45)')
+					.style('text-anchor', 'end')
+				//設定y軸的domain
+				yScale.domain([0, d3.max(yData)]).nice()
+				yAxis.transition().duration(1000).call(yAxisGenerator)
+
+				const bar = svg.selectAll('rect').data(data).join('rect')
+
+				bar
+					.join('rect')
+					.attr('x', d => xScale(d['縣市']))
+					.attr('y', d => yScale(parseInt(d['得票數'].split(',').join(''))))
+					.attr('width', xScale.bandwidth())
+					.attr(
+						'height',
+						d =>
+							svgHeight -
+							margin -
+							yScale(parseInt(d['得票數'].split(',').join('')))
+					)
+					.attr('fill', 'rgb(248, 204, 61)')
+
+				bar
+					.attr('cursor', 'pointer')
+					.on('mouseover', handleMouseOver)
+					.on('mouseout', handleMouseleave)
+
+				function handleMouseOver(d, i) {
+					d3.select(this).attr('fill', 'rgb(255, 0, 0)')
+
+					svg
+						.append('text')
+						.attr('class', 'infoText')
+						.attr(
+							'y',
+							yScale(
+								parseInt(d.target.__data__['得票數'].split(',').join(''))
+							) - 20
+						)
+						.attr('x', xScale(d.target.__data__['縣市']) + 30)
+						.style('fill', '#000')
+						.style('font-size', '18px')
+						.style('text-anchor', 'middle')
+						.text(d.target.__data__['得票數'] + '票')
+				}
+				function handleMouseleave(d, i) {
+					d3.select(this).attr('fill', 'rgb(248, 204, 61)')
+					d3.select('.infoText').remove()
+				}
+			}
+
+			getCsvData()
+		</script>
+	</body>
+</html>
